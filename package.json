@@ -10,17 +10,42 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.8",
+    "@ai-sdk/groq": "^2.0.14",
+    "@ai-sdk/openai": "^2.0.19",
+    "@ai-sdk/react": "^2.0.22",
+    "@radix-ui/react-avatar": "^1.1.10",
+    "@radix-ui/react-collapsible": "^1.1.12",
+    "@radix-ui/react-hover-card": "^1.1.15",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@vercel/blob": "^1.1.1",
+    "ai": "^5.0.22",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
+    "lucide-react": "^0.541.0",
+    "next": "15.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.0"
+    "react-syntax-highlighter": "^15.6.3",
+    "streamdown": "^1.0.12",
+    "tailwind-merge": "^3.3.1",
+    "use-stick-to-bottom": "^1.1.1",
+    "zod": "^4.1.1"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@biomejs/biome": "2.2.0",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "tailwindcss": "^4",
-    "@biomejs/biome": "2.2.0"
+    "tw-animate-css": "^1.3.7",
+    "typescript": "^5"
   }
 }
