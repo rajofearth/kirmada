@@ -220,7 +220,10 @@ export default function Home() {
                 <MicIcon />
               </PromptInputButton>
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input} status={status} />
+            <PromptInputSubmit
+              disabled={!input.trim()}
+              status={status === "streaming" ? "streaming" : "ready"}
+            />
           </PromptInputToolbar>
         </PromptInput>
       </div>

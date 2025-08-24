@@ -1,4 +1,5 @@
 import { groq } from "@ai-sdk/groq";
+import { google } from "@ai-sdk/google";
 import { type OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 import {
   convertToModelMessages,
@@ -26,6 +27,12 @@ export const POST = async (req: Request) => {
         reasoningEffort: "low",
         parallelToolCalls: true,
       },
+      google: {
+        thinkingConfig: {
+          thinkingBudget: 8192,
+          includeThoughts: true,
+        },
+      },
       openai: {
         reasoningEffort: "low",
         reasoningSummary: "auto",
@@ -37,5 +44,5 @@ export const POST = async (req: Request) => {
       browser_search: groq.tools.browserSearch({}),
     },
   });
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({ sendReasoning: true });
 };

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Test 2",
-  description: "AISDK",
+  title: "Kirmada",
+  description: "An AI Webapp By Yashraj Maher",
 };
 
 export default function RootLayout({
