@@ -172,9 +172,26 @@ export default function Home() {
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="flex-shrink-0 h-7 w-7 rounded-md bg-white/10 backdrop-blur-sm
-                                                   border border-white/20 text-white transition-transform duration-300
-                                                   hover:scale-110"
+                                        onClick={() => {
+                                          if (!output.imageUrl) return;
+                                          fetch(output.imageUrl)
+                                            .then((r) => r.blob())
+                                            .then((b) => {
+                                              const a = Object.assign(
+                                                document.createElement("a"),
+                                                {
+                                                  href: URL.createObjectURL(b),
+                                                  download:
+                                                    input.prompt.replace(
+                                                      /[^a-z0-9_\-]/gi,
+                                                      "_",
+                                                    ) + ".png",
+                                                },
+                                              );
+                                              a.click();
+                                              URL.revokeObjectURL(a.href);
+                                            });
+                                        }}
                                       >
                                         <DownloadIcon className="h-4 w-4" />
                                       </Button>

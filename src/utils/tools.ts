@@ -6,7 +6,11 @@ import { put } from "@vercel/blob";
 export const imageGenerationTool = tool({
   description: "Generate An Image",
   inputSchema: z.object({
-    prompt: z.string().describe("The Prompt To Generate An Image For"),
+    prompt: z
+      .string()
+      .describe(
+        "The Prompt To Generate An Image For (If User's prompt is simple then Enhance the prompt to get better results)",
+      ),
   }),
   execute: async ({ prompt }) => {
     const result = await generateText({
