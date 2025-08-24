@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, ToolUIPart } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -15,19 +14,12 @@ import {
   ReasoningContent,
 } from "@/components/ai-elements/reasoning";
 import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
-import {
   Source,
   Sources,
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai-elements/source";
-import { Loader, PlusIcon } from "lucide-react";
+import { Loader, MicIcon, PlusIcon } from "lucide-react";
 import {
   PromptInput,
   PromptInputButton,
@@ -36,7 +28,6 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import { id } from "zod/v4/locales";
 import Image from "next/image";
 
 export default function Home() {
@@ -44,6 +35,52 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<FileList | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const handleMicClick = async () => {
+    if (!recording) {
+      // Start recording
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+        const formData = new FormData();
+        formData.append("file", audioBlob, "audio.webm");
+
+        const res = await fetch("/api/transcribe", {
+          method: "POST",
+          body: formData,
+        });
+        const { text } = await res.json();
+        setInput((prev) => prev + " " + text);
+      };
+
+      mediaRecorderRef.current.start();
+      setRecording(true);
+    } else {
+      // Stop recording
+      mediaRecorderRef.current?.stop();
+
+      // 🔴 Important: stop mic tracks so the mic turns off
+      mediaRecorderRef.current?.stream
+        .getTracks()
+        .forEach((track) => track.stop());
+
+      setRecording(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +212,13 @@ export default function Home() {
                 ref={fileInputRef}
                 className="hidden"
               />
+              <PromptInputButton
+                onClick={handleMicClick}
+                aria-label="Capture Audio"
+                className={recording ? "bg-red-500" : ""}
+              >
+                <MicIcon />
+              </PromptInputButton>
             </PromptInputTools>
             <PromptInputSubmit disabled={!input} status={status} />
           </PromptInputToolbar>

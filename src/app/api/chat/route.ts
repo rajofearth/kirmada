@@ -34,6 +34,7 @@ export const POST = async (req: Request) => {
     experimental_transform: smoothStream(),
     tools: {
       generateImage: imageGenerationTool,
+      browser_search: groq.tools.browserSearch({}),
     },
   });
   return result.toUIMessageStreamResponse();
