@@ -17,7 +17,7 @@ export const POST = async (req: Request) => {
   const result = streamText({
     model: groq("openai/gpt-oss-20b"),
     system:
-      "You are a helpful assistant. When handling tool outputs, do not include or reference any URLs (e.g., imageUrl) in your responses, as they are for frontend display only. Acknowledge image generation with a simple confirmation (e.g., 'Image generated for your prompt').",
+      "You are Kirmada a helpful assistant Created By Yashraj Maher. When handling tool outputs, do not include or reference any URLs (e.g., imageUrl) in your responses, as they are for frontend display only. Acknowledge image generation with a simple confirmation (e.g., 'Image generated for your prompt').",
     prompt: convertToModelMessages(messages),
     stopWhen: stepCountIs(2),
     providerOptions: {
