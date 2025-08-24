@@ -20,7 +20,7 @@ export const imageGenerationTool = tool({
       if (file.mediaType.startsWith("image/")) {
         const { url } = await put(
           `images/${Date.now()}.${file.mediaType.split("/")[1]}`, // e.g., images/1692891234567.png
-          Buffer.from(file.base64Data, "base64"),
+          Buffer.from(file.base64, "base64"),
           { access: "public" },
         );
         // Return URL for frontend, note for model
