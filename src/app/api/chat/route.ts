@@ -7,7 +7,6 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
-  tool,
   UIMessage,
 } from "ai";
 import { imageGenerationTool } from "@/utils/tools";

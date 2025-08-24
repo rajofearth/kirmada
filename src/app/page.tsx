@@ -19,7 +19,7 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai-elements/source";
-import { Loader, MicIcon, PlusIcon } from "lucide-react";
+import { DownloadIcon, Loader, MicIcon, PlusIcon } from "lucide-react";
 import {
   PromptInput,
   PromptInputButton,
@@ -29,6 +29,8 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardFooter } from "@/components/ui/card";
 
 export default function Home() {
   const { messages, sendMessage, status } = useChat();
@@ -137,13 +139,48 @@ export default function Home() {
                             };
                             if (output.imageUrl) {
                               return (
-                                <Image
+                                <Card
+                                  className="border-none p-0 group"
                                   key={toolCallId}
-                                  src={output.imageUrl}
-                                  alt={input.prompt}
-                                  height={400}
-                                  width={400}
-                                />
+                                >
+                                  <div className="relative w-full">
+                                    <Image
+                                      key={toolCallId}
+                                      src={output.imageUrl}
+                                      alt={input.prompt}
+                                      height={400}
+                                      width={400}
+                                      className="object-cover rounded-lg mx-auto"
+                                    />
+
+                                    <CardFooter
+                                      className="absolute bottom-0 left-0 right-0
+                                                 flex justify-between items-start gap-2
+                                                 bg-black/60 backdrop-blur-sm
+                                                 px-2 py-1.5 rounded-b-lg
+                                                 transition-all duration-500 ease-in-out
+                                                 overflow-hidden group-hover:overflow-visible"
+                                    >
+                                      <p
+                                        className="text-[12px] leading-snug text-white
+                                                   max-h-[2.8em] overflow-hidden
+                                                   transition-[max-height] duration-500 ease-in-out
+                                                   hover:max-h-[200px]"
+                                      >
+                                        {input.prompt}
+                                      </p>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="flex-shrink-0 h-7 w-7 rounded-md bg-white/10 backdrop-blur-sm
+                                                   border border-white/20 text-white transition-transform duration-300
+                                                   hover:scale-110"
+                                      >
+                                        <DownloadIcon className="h-4 w-4" />
+                                      </Button>
+                                    </CardFooter>
+                                  </div>
+                                </Card>
                               );
                             }
                             return null;
