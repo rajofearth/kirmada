@@ -172,28 +172,11 @@ export default function Home() {
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        onClick={() => {
-                                          if (!output.imageUrl) return;
-                                          fetch(output.imageUrl)
-                                            .then((r) => r.blob())
-                                            .then((b) => {
-                                              const a = Object.assign(
-                                                document.createElement("a"),
-                                                {
-                                                  href: URL.createObjectURL(b),
-                                                  download:
-                                                    input.prompt.replace(
-                                                      /[^a-z0-9_\-]/gi,
-                                                      "_",
-                                                    ) + ".png",
-                                                },
-                                              );
-                                              a.click();
-                                              URL.revokeObjectURL(a.href);
-                                            });
-                                        }}
+                                        asChild
                                       >
-                                        <DownloadIcon className="h-4 w-4" />
+                                        <a href={output.downloadUrl}>
+                                          <DownloadIcon className="h-4 w-4" />
+                                        </a>
                                       </Button>
                                     </CardFooter>
                                   </div>

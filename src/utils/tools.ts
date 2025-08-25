@@ -1,7 +1,7 @@
 import { tool, generateText } from "ai";
 import z from "zod";
 import { google } from "@ai-sdk/google";
-import { put } from "@vercel/blob";
+import { put, getDownloadUrl } from "@vercel/blob";
 
 export const imageGenerationTool = tool({
   description: "Generate An Image",
@@ -27,8 +27,7 @@ export const imageGenerationTool = tool({
           Buffer.from(file.base64, "base64"),
           { access: "public" },
         );
-        // Return URL for frontend, note for model
-        return { imageUrl: url };
+        return { imageUrl: url, downloadUrl: getDownloadUrl(url) };
       }
     }
     return "no image generated";
