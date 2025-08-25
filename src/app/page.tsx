@@ -1,25 +1,10 @@
 "use client";
-import { useState, useRef } from "react";
-import { useChat } from "@ai-sdk/react";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
-import { Response } from "@/components/ai-elements/response";
-import {
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-} from "@/components/ai-elements/reasoning";
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from "@/components/ai-elements/source";
-import { DownloadIcon, Loader, MicIcon, PlusIcon } from "lucide-react";
 import {
   PromptInput,
   PromptInputButton,
@@ -28,9 +13,24 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import Image from "next/image";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
+import { Response } from "@/components/ai-elements/response";
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from "@/components/ai-elements/source";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
+import { useChat } from "@ai-sdk/react";
+import { DownloadIcon, Loader, MicIcon, PlusIcon } from "lucide-react";
+import Image from "next/image";
+import { useRef, useState } from "react";
 
 export default function Home() {
   const { messages, sendMessage, status } = useChat();
@@ -135,7 +135,10 @@ export default function Home() {
                           if (state === "output-available") {
                             const { input, output } = part as {
                               input: { prompt: string };
-                              output: { imageUrl?: string; prompt: string };
+                              output: {
+                                imageUrl?: string;
+                                downloadUrl?: string;
+                              };
                             };
                             if (output.imageUrl) {
                               return (
