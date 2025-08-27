@@ -196,3 +196,50 @@
     letter-spacing: var(--tracking-normal);
   }
 }
+
+/* Custom Scrollbar - matches site tokens */
+@layer base {
+  /* Root viewport scrollbar */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  html::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  html::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+  .dark html::-webkit-scrollbar-thumb {
+    background-color: var(--input);
+  }
+
+  /* Utility class for any scrollable container */
+  .scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+  .dark .scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--input);
+  }
+}
