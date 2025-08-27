@@ -10,6 +10,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useMemo, useState } from "react";
 import type { WeatherAtLocation } from "@/types/weather";
 import {
   Card,
@@ -20,7 +21,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-export function Weather({ location, current, today }: WeatherAtLocation) {
+export function Weather({ location, current, today, week }: WeatherAtLocation) {
   const safelyFormat = (isoString: string | undefined, pattern: string): string => {
     if (!isoString) return "—";
     const date = new Date(isoString);
@@ -31,6 +32,12 @@ export function Weather({ location, current, today }: WeatherAtLocation) {
   const formattedSunrise = safelyFormat(today.sunrise, "hh:mm a");
   const formattedSunset = safelyFormat(today.sunset, "hh:mm a");
   const formattedTime = safelyFormat(current.time, "PPpp");
+
+  // Interactivity: allow selecting a day from week forecast
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const selectedDay = useMemo(() =>
+    selectedIndex != null && Array.isArray(week) ? week[selectedIndex] : undefined,
+  [selectedIndex, week]);
 
   // Simple condition → icon mapping
   const getWeatherIcon = (condition?: string) => {
@@ -43,6 +50,10 @@ export function Weather({ location, current, today }: WeatherAtLocation) {
         return <CloudRain className="text-primary w-8 h-8" />;
       case "snow":
         return <Snowflake className="text-primary w-8 h-8" />;
+      case "thunderstorm":
+        return <CloudRain className="text-primary w-8 h-8" />;
+      case "fog":
+        return <Wind className="text-muted-foreground w-8 h-8" />;
       default:
         return <Wind className="text-muted-foreground w-8 h-8" />;
     }
@@ -70,7 +81,7 @@ export function Weather({ location, current, today }: WeatherAtLocation) {
           </p>
           <p className="text-xs text-muted-foreground mt-1">{formattedTime}</p>
         </div>
-        {getWeatherIcon()}
+        {getWeatherIcon(current.condition)}
       </CardContent>
 
       <CardFooter className="flex items-center justify-between">
@@ -85,6 +96,82 @@ export function Weather({ location, current, today }: WeatherAtLocation) {
           <span className="font-semibold tracking-wide text-primary">{formattedSunset}</span>
         </div>
       </CardFooter>
+      {Array.isArray(week) && week.length > 0 && (
+        <div className="px-6 pb-6 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-fr">
+            {week.map((d, i) => {
+              const isSelected = i === selectedIndex;
+              return (
+                <button
+                  key={d.date}
+                  type="button"
+                  onClick={() => setSelectedIndex(i)}
+                  aria-pressed={isSelected}
+                  className="group rounded-lg border p-3 grid grid-cols-[1fr_auto] items-center gap-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary data-[selected=true]:bg-accent data-[selected=true]:ring-2 data-[selected=true]:ring-primary min-h-[92px]"
+                  data-selected={isSelected}
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(d.date), "EEE, d MMM")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {getWeatherIcon(d.condition)}
+                      <p className="text-sm font-medium tabular-nums">
+                        {Math.round(d.precipitationProbabilityMax ?? 0)}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums">
+                      {Math.round(d.tempMax)}° / {Math.round(d.tempMin)}°
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedDay && (
+            <div className="rounded-xl border p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Selected day</p>
+                  <p className="text-lg font-semibold">
+                    {format(new Date(selectedDay.date), "EEEE, d MMMM")}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">High / Low</p>
+                  <p className="text-xl font-bold tabular-nums">
+                    {Math.round(selectedDay.tempMax)}° / {Math.round(selectedDay.tempMin)}°
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">Sunrise</span>
+                  <span className="font-medium">
+                    {safelyFormat(selectedDay.sunrise, "hh:mm a")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 justify-end">
+                  <Moon className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">Sunset</span>
+                  <span className="font-medium">
+                    {safelyFormat(selectedDay.sunset, "hh:mm a")}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-2 text-sm font-medium flex items-center gap-2 text-primary">
+                <CloudRain className="w-4 h-4" />
+                Chance of precipitation: {Math.round(selectedDay.precipitationProbabilityMax ?? 0)}%
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      {Array.isArray((week as any))}
     </Card>
   );
 }
