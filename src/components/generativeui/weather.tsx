@@ -164,7 +164,7 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
                 </div>
               </div>
               <p className="mt-2 text-sm font-medium flex items-center gap-2 text-primary">
-                <CloudRain className="w-4 h-4" />
+              {getWeatherIcon(selectedDay.condition)}
                 Chance of precipitation: {Math.round(selectedDay.precipitationProbabilityMax ?? 0)}%
               </p>
             </div>
