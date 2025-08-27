@@ -67,10 +67,6 @@ export const getWeather = tool({
         sunrise: json.daily.sunrise[0],
         sunset: json.daily.sunset[0],
       },
-      hourly: json.hourly.time.slice(0, 6).map((t: string, i: number) => ({
-        time: t,
-        temperature: json.hourly.temperature_2m[i],
-      })),
     };
 
     // runtime validate & return typed object
