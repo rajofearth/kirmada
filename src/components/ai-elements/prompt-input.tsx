@@ -34,6 +34,12 @@ export const PromptInput = ({ className, ...props }: PromptInputProps) => (
 export type PromptInputTextareaProps = ComponentProps<typeof Textarea> & {
   minHeight?: number;
   maxHeight?: number;
+  /**
+   * Controls whether Enter should submit the form. When false,
+   * Enter will be ignored (unless Shift is held) to prevent empty submissions
+   * or submissions while the assistant is responding.
+   */
+  canSubmit?: boolean;
 };
 
 export const PromptInputTextarea = ({
@@ -42,6 +48,7 @@ export const PromptInputTextarea = ({
   placeholder = "What would you like to know?",
   minHeight = 48,
   maxHeight = 164,
+  canSubmit = true,
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -56,7 +63,13 @@ export const PromptInputTextarea = ({
         return;
       }
 
-      // Submit on Enter (without Shift)
+      // Submit on Enter (without Shift) only when allowed and non-empty
+      const value = e.currentTarget.value;
+      const isNonEmpty = value.trim().length > 0;
+      if (!canSubmit || !isNonEmpty) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       const form = e.currentTarget.form;
       if (form) {
@@ -78,6 +91,7 @@ export const PromptInputTextarea = ({
         onChange?.(e);
       }}
       onKeyDown={handleKeyDown}
+      aria-disabled={!canSubmit}
       placeholder={placeholder}
       {...props}
     />
@@ -156,7 +170,7 @@ export const PromptInputSubmit = ({
   if (status === "submitted") {
     Icon = <Loader2Icon className="size-4 animate-spin" />;
   } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-4" />;
+    Icon = <Loader2Icon className="size-4 animate-spin" />;
   } else if (status === "error") {
     Icon = <XIcon className="size-4" />;
   }
@@ -167,6 +181,7 @@ export const PromptInputSubmit = ({
       size={size}
       type="submit"
       variant={variant}
+      aria-busy={status === "submitted" || status === "streaming"}
       {...props}
     >
       {children ?? Icon}

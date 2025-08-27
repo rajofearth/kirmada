@@ -355,6 +355,7 @@ export default function Home() {
           <PromptInputTextarea
             onChange={(e) => setInput(e.target.value)}
             value={input}
+            canSubmit={Boolean(input.trim()) && status !== "submitted" && status !== "streaming"}
           />
           <PromptInputToolbar>
             <PromptInputTools>
@@ -385,8 +386,8 @@ export default function Home() {
               </PromptInputButton>
             </PromptInputTools>
             <PromptInputSubmit
-              disabled={!input.trim()}
-              status={status === "streaming" ? "streaming" : "ready"}
+              disabled={!input.trim() || status === "submitted" || status === "streaming"}
+              status={status}
             />
           </PromptInputToolbar>
         </PromptInput>
