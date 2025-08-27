@@ -25,6 +25,8 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai-elements/source";
+import { WeatherSchema, type WeatherAtLocation } from "@/types/weather";
+import { Weather } from "@/components/generativeui/weather";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
 import { useChat } from "@ai-sdk/react";
@@ -188,6 +190,36 @@ export default function Home() {
                             }
                             return null;
                           }
+                        case "tool-displayWeather": {
+                          switch (part.state) {
+                            case "input-available":
+                              return <div key={i}>Loading weather...</div>;
+                            case "output-available": {
+                              // part.output is unknown -> let zod validate it (throws on invalid)
+                              try {
+                                const validatedWeather = WeatherSchema.parse(
+                                  (part as any).output,
+                                );
+                                return (
+                                  <div key={i}>
+                                    <Weather {...validatedWeather} />
+                                  </div>
+                                );
+                              } catch (err) {
+                                // show useful error rather than crash
+                                return (
+                                  <div key={i}>
+                                    Error: Invalid weather data received.
+                                  </div>
+                                );
+                              }
+                            }
+                            case "output-error":
+                              return <div key={i}>Error: {part.errorText}</div>;
+                            default:
+                              return null;
+                          }
+                        }
                         default:
                           return null;
                       }

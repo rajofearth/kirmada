@@ -9,7 +9,7 @@ import {
   streamText,
   UIMessage,
 } from "ai";
-import { imageGenerationTool } from "@/utils/tools";
+import { tools } from "@/utils/tools";
 
 export const POST = async (req: Request) => {
   const { messages }: { messages: UIMessage[] } = await req.json();
@@ -39,7 +39,7 @@ export const POST = async (req: Request) => {
     },
     experimental_transform: smoothStream(),
     tools: {
-      generateImage: imageGenerationTool,
+      ...tools,
       browser_search: groq.tools.browserSearch({}),
     },
   });
