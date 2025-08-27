@@ -20,6 +20,13 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { Response } from "@/components/ai-elements/response";
 import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import {
   Source,
   Sources,
   SourcesContent,
@@ -125,13 +132,17 @@ export default function Home() {
                               <ReasoningContent>{part.text}</ReasoningContent>
                             </Reasoning>
                           );
-                        case "tool-generateImage":
+                        case "tool-imageGen":
                           const { state, toolCallId } = part;
                           if (state === "input-available") {
                             return (
-                              <div key={`${message.id}-part-${toolCallId}`}>
-                                Generating Image...
-                              </div>
+                              <Tool key={`${message.id}-part-${toolCallId}`}>
+                                <ToolHeader type={part.type} state={part.state} />
+                                <ToolContent>
+                                  <ToolInput input={(part as any).input} />
+                                  <div className="p-4">Generating Image...</div>
+                                </ToolContent>
+                              </Tool>
                             );
                           }
                           if (state === "output-available") {
@@ -144,48 +155,40 @@ export default function Home() {
                             };
                             if (output.imageUrl) {
                               return (
-                                <Card
-                                  className="border-none p-0 group"
-                                  key={toolCallId}
-                                >
-                                  <div className="relative w-full">
-                                    <Image
-                                      key={toolCallId}
-                                      src={output.imageUrl}
-                                      alt={input.prompt}
-                                      height={400}
-                                      width={400}
-                                      className="object-cover rounded-lg mx-auto"
-                                    />
-
-                                    <CardFooter
-                                      className="absolute bottom-0 left-0 right-0
-                                                 flex justify-between items-start gap-2
-                                                 bg-black/60 backdrop-blur-sm
-                                                 px-2 py-1.5 rounded-b-lg
-                                                 transition-all duration-500 ease-in-out
-                                                 overflow-hidden group-hover:overflow-visible"
-                                    >
-                                      <p
-                                        className="text-[12px] leading-snug text-white
-                                                   max-h-[2.8em] overflow-hidden
-                                                   transition-[max-height] duration-500 ease-in-out
-                                                   hover:max-h-[200px]"
-                                      >
-                                        {input.prompt}
-                                      </p>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        asChild
-                                      >
-                                        <a href={output.downloadUrl}>
-                                          <DownloadIcon className="h-4 w-4" />
-                                        </a>
-                                      </Button>
-                                    </CardFooter>
+                                <div key={`${message.id}-img-${toolCallId}`}>
+                                  <Tool key={`${toolCallId}-meta`}>
+                                    <ToolHeader type={part.type} state={part.state} />
+                                    <ToolContent>
+                                      <ToolInput input={(part as any).input} />
+                                    </ToolContent>
+                                  </Tool>
+                                  <div className="p-4">
+                                    <Card className="border-none p-0 group">
+                                      <div className="relative w-full">
+                                        <Image
+                                          key={toolCallId}
+                                          src={output.imageUrl}
+                                          alt={input.prompt}
+                                          height={400}
+                                          width={400}
+                                          className="object-cover rounded-lg mx-auto"
+                                        />
+                                        <CardFooter
+                                          className="absolute bottom-0 left-0 right-0 flex justify-between items-start gap-2 bg-black/60 backdrop-blur-sm px-2 py-1.5 rounded-b-lg transition-all duration-500 ease-in-out overflow-hidden group-hover:overflow-visible"
+                                        >
+                                          <p className="text-[12px] leading-snug text-white max-h-[2.8em] overflow-hidden transition-[max-height] duration-500 ease-in-out hover:max-h-[200px]">
+                                            {input.prompt}
+                                          </p>
+                                          <Button variant="ghost" size="icon" asChild>
+                                            <a href={output.downloadUrl}>
+                                              <DownloadIcon className="h-4 w-4" />
+                                            </a>
+                                          </Button>
+                                        </CardFooter>
+                                      </div>
+                                    </Card>
                                   </div>
-                                </Card>
+                                </div>
                               );
                             }
                             return null;
@@ -193,7 +196,14 @@ export default function Home() {
                         case "tool-displayWeather": {
                           switch (part.state) {
                             case "input-available":
-                              return <div key={i}>Loading weather...</div>;
+                              return (
+                                <Tool key={`${message.id}-tw-${i}`}>
+                                  <ToolHeader type={part.type} state={part.state} />
+                                  <ToolContent>
+                                    <ToolInput input={(part as any).input} />
+                                  </ToolContent>
+                                </Tool>
+                              );
                             case "output-available": {
                               // part.output is unknown -> let zod validate it (throws on invalid)
                               try {
@@ -201,21 +211,103 @@ export default function Home() {
                                   (part as any).output,
                                 );
                                 return (
-                                  <div key={i}>
-                                    <Weather {...validatedWeather} />
+                                  <div key={`${message.id}-tw-out-${i}`}>
+                                    <Tool key={`${message.id}-tw-${i}-meta`}>
+                                      <ToolHeader type={part.type} state={part.state} />
+                                      <ToolContent>
+                                        <ToolInput input={(part as any).input} />
+                                      </ToolContent>
+                                    </Tool>
+                                    <div className="p-4">
+                                      <Weather {...validatedWeather} />
+                                    </div>
                                   </div>
                                 );
                               } catch (err) {
                                 // show useful error rather than crash
                                 return (
-                                  <div key={i}>
-                                    Error: Invalid weather data received.
-                                  </div>
+                                  <Tool key={`${message.id}-tw-${i}`}>
+                                    <ToolHeader type={part.type} state={"output-error"} />
+                                    <ToolContent>
+                                      <ToolOutput output={undefined} errorText="Invalid weather data received." />
+                                    </ToolContent>
+                                  </Tool>
                                 );
                               }
                             }
                             case "output-error":
-                              return <div key={i}>Error: {part.errorText}</div>;
+                              return (
+                                <Tool key={`${message.id}-tw-${i}`}>
+                                  <ToolHeader type={part.type} state={part.state} />
+                                  <ToolContent>
+                                    <ToolOutput output={undefined} errorText={(part as any).errorText} />
+                                  </ToolContent>
+                                </Tool>
+                              );
+                            default:
+                              return null;
+                          }
+                        }
+                        case "tool-getCoords": {
+                          switch (part.state) {
+                            case "input-available":
+                              return (
+                                <Tool key={`${message.id}-tg-${i}`}>
+                                  <ToolHeader type={part.type} state={part.state} />
+                                  <ToolContent>
+                                    <ToolInput input={(part as any).input} />
+                                  </ToolContent>
+                                </Tool>
+                              );
+                            case "output-available": {
+                              const { input, output } = part as any;
+                              const results = output?.results ?? [];
+                              const list = (
+                                <div className="p-4">
+                                  <div className="text-xs text-muted-foreground mb-2">{output?.url}</div>
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="text-left">
+                                        <th className="py-1">Name</th>
+                                        <th className="py-1">Admin1</th>
+                                        <th className="py-1">Country</th>
+                                        <th className="py-1">Lat</th>
+                                        <th className="py-1">Lon</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {results.map((r: any) => (
+                                        <tr key={r.id} className="border-t">
+                                          <td className="py-1">{r.name}</td>
+                                          <td className="py-1">{r.admin1}</td>
+                                          <td className="py-1">{r.country}</td>
+                                          <td className="py-1 tabular-nums">{r.latitude}</td>
+                                          <td className="py-1 tabular-nums">{r.longitude}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              );
+                              return (
+                                <Tool key={`${message.id}-tg-${i}`}>
+                                  <ToolHeader type={part.type} state={part.state} />
+                                  <ToolContent>
+                                    <ToolInput input={input} />
+                                    <ToolOutput output={list} errorText={undefined} />
+                                  </ToolContent>
+                                </Tool>
+                              );
+                            }
+                            case "output-error":
+                              return (
+                                <Tool key={`${message.id}-tg-${i}`}>
+                                  <ToolHeader type={part.type} state={part.state} />
+                                  <ToolContent>
+                                    <ToolOutput output={undefined} errorText={(part as any).errorText} />
+                                  </ToolContent>
+                                </Tool>
+                              );
                             default:
                               return null;
                           }

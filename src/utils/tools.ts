@@ -4,18 +4,25 @@ import { google } from "@ai-sdk/google";
 import { put, getDownloadUrl } from "@vercel/blob";
 import { WeatherSchema, WeatherAtLocation } from "@/types/weather";
 
-const WeatherInputSchema = z.object({
-  latitude: z.number(),
-  longitude: z.number(),
-  // Optional specific day and hour to fetch (YYYY-MM-DD, 0-23)
+const BaseInputSchema = z.object({
+  latitude: z.number().describe("Latitude in decimal degrees. Example: 52.52"),
+  longitude: z
+    .number()
+    .describe("Longitude in decimal degrees. Example: 13.41"),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .describe(
+      "Optional date YYYY-MM-DD. Works for past and future using the Forecast API with start/end date.",
+    )
     .optional(),
-  hour: z.number().int().min(0).max(23).optional(),
-  // Optional range preset for multi-day forecasts
-  range: z.enum(["next_week"]).optional(),
+  range: z
+    .enum(["next_week"])
+    .describe("Use 'next_week' to fetch a 7-day daily forecast in one call.")
+    .optional(),
 });
+
+const WeatherInputSchema = BaseInputSchema;
 
 export const imageGenerationTool = tool({
   description: "Generate An Image",
@@ -50,18 +57,21 @@ export const imageGenerationTool = tool({
 
 export const getWeather = tool({
   description:
-    "Get weather now, for a specific date/hour, or the next week (range)",
+    "Weather by coordinates: now (current), a specific date (YYYY-MM-DD), or next week. Use the 'getCoords' tool first to resolve city + ISO country code to coordinates. Uses Open-Meteo Forecast API for past and future via start_date/end_date. Prefer range='next_week' for weekly summaries.",
   inputSchema: WeatherInputSchema,
   execute: async (
     args: z.infer<typeof WeatherInputSchema>,
   ): Promise<WeatherAtLocation> => {
-    const { latitude, longitude, date, hour, range } = args;
+    const { latitude, longitude, date, range } = args;
 
     // Weekly forecast branch
     if (range === "next_week") {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,precipitation_sum,weathercode&hourly=weathercode&current=temperature_2m,weathercode&timezone=auto&forecast_days=7`;
       const res = await fetch(url);
       const json = await res.json();
+      if (json?.error) {
+        throw new Error(json?.reason || "Open-Meteo error while fetching weekly forecast");
+      }
 
       const codeToCondition = (code?: number): string | undefined => {
         if (code == null) return undefined;
@@ -104,9 +114,9 @@ export const getWeather = tool({
 
       const cleaned = {
         location: {
-          latitude: json.latitude,
-          longitude: json.longitude,
-          timezone: json.timezone,
+          latitude: Number(json.latitude),
+          longitude: Number(json.longitude),
+          timezone: json.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         },
         current: {
           time: json.current?.time ?? new Date().toISOString(),
@@ -123,36 +133,29 @@ export const getWeather = tool({
       return WeatherSchema.parse(cleaned);
     }
 
-    // If a specific date is requested, fetch that day's data from the correct API
+    // If a specific date is requested, fetch that day's data from Forecast API
     if (date) {
-      const todayUtc = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const isPast = date < todayUtc;
-      const base = isPast
-        ? "https://archive-api.open-meteo.com/v1/archive"
-        : "https://api.open-meteo.com/v1/forecast";
-
+      const base = "https://api.open-meteo.com/v1/forecast";
       const dayUrl = `${base}?latitude=${latitude}&longitude=${longitude}&start_date=${date}&end_date=${date}&hourly=temperature_2m,weathercode&daily=sunrise,sunset,weathercode&timezone=auto`;
 
       const res = await fetch(dayUrl);
       const json = await res.json();
+      if (json?.error) {
+        throw new Error(json?.reason || "Open-Meteo error while fetching date forecast");
+      }
 
       const hourlyTimes: string[] = json?.hourly?.time ?? [];
       const hourlyTemps: number[] = json?.hourly?.temperature_2m ?? [];
 
-      // Index of first hour of that day
+      // Choose midday sample for the day, or fall back to the first hour
       const firstIdx = hourlyTimes.findIndex((t) => t.startsWith(date));
-      let selectedIdx = firstIdx;
-      if (firstIdx !== -1) {
-        if (typeof hour === "number") {
-          const hourStr = `${String(hour).padStart(2, "0")}:00`;
-          const found = hourlyTimes.findIndex(
-            (t) => t.startsWith(`${date}T${hourStr}`),
-          );
-          selectedIdx = found !== -1 ? found : Math.min(firstIdx + 12, firstIdx + 23);
-        } else {
-          selectedIdx = Math.min(firstIdx + 12, firstIdx + 23); // midday fallback
-        }
-      }
+      const middayIdx = hourlyTimes.findIndex((t) => t === `${date}T12:00`);
+      const selectedIdx =
+        middayIdx !== -1
+          ? middayIdx
+          : firstIdx !== -1
+          ? firstIdx
+          : -1;
 
       const codeToCondition = (code?: number): string | undefined => {
         if (code == null) return undefined;
@@ -167,15 +170,23 @@ export const getWeather = tool({
 
       const cleaned = {
         location: {
-          latitude: json.latitude,
-          longitude: json.longitude,
-          timezone: json.timezone,
+          latitude: Number(json.latitude),
+          longitude: Number(json.longitude),
+          timezone: json.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         },
         current: {
           time: hourlyTimes[selectedIdx] ?? `${date}T00:00`,
           temperature:
-            hourlyTemps[selectedIdx] ?? (hourlyTemps[firstIdx] ?? 0),
-          condition: codeToCondition(json?.hourly?.weathercode?.[selectedIdx]),
+            selectedIdx !== -1
+              ? hourlyTemps[selectedIdx]
+              : firstIdx !== -1
+              ? hourlyTemps[firstIdx]
+              : 0,
+          condition: codeToCondition(
+            selectedIdx !== -1
+              ? json?.hourly?.weathercode?.[selectedIdx]
+              : json?.hourly?.weathercode?.[firstIdx],
+          ),
         },
         today: {
           sunrise: json?.daily?.sunrise?.[0] ?? `${date}T06:00`,
@@ -191,12 +202,15 @@ export const getWeather = tool({
 
     const res = await fetch(url);
     const json = await res.json();
+    if (json?.error) {
+      throw new Error(json?.reason || "Open-Meteo error while fetching current forecast");
+    }
 
     const cleaned = {
       location: {
-        latitude: json.latitude,
-        longitude: json.longitude,
-        timezone: json.timezone,
+        latitude: Number(json.latitude),
+        longitude: Number(json.longitude),
+        timezone: json.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
       },
       current: {
         time: json.current.time,
@@ -212,7 +226,45 @@ export const getWeather = tool({
   },
 });
 
+// Geocoding tool: city + ISO country code -> coordinates (multiple matches)
+export const getCoords = tool({
+  description:
+    "Resolve a city and ISO-3166-1 alpha-2 country code to coordinates using Open-Meteo Geocoding API. Returns up to 10 matches with latitude, longitude, admin1, and timezone.",
+  inputSchema: z.object({
+    city: z.string().min(2).describe("City name, e.g., 'Aurangabad'"),
+    countryCode: z
+      .string()
+      .regex(/^[A-Za-z]{2}$/)
+      .describe("ISO-3166-1 alpha-2 country code, e.g., 'IN', 'DE', 'US'"),
+    count: z.number().int().min(1).max(10).default(10).optional(),
+  }),
+  execute: async ({ city, countryCode, count = 10 }) => {
+    const q = encodeURIComponent(city.trim());
+    const cc = countryCode.toUpperCase();
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=${count}&language=en&format=json&countryCode=${cc}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const results = (json?.results ?? []).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      admin1: r.admin1,
+      country: r.country,
+      country_code: r.country_code,
+      timezone: r.timezone,
+    }));
+    if (!results.length) {
+      throw new Error(
+        `No matches for city='${city}', country='${cc}'. See docs: https://open-meteo.com/en/docs/geocoding-api`
+      );
+    }
+    return { url, results };
+  },
+});
+
 export const tools = {
   displayWeather: getWeather,
+  getCoords,
   imageGen: imageGenerationTool,
 };
