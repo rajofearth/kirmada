@@ -8,6 +8,7 @@ import {
   Snowflake,
   Wind,
   MapPin,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
@@ -35,9 +36,18 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
 
   // Interactivity: allow selecting a day from week forecast
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
   const selectedDay = useMemo(() =>
     selectedIndex != null && Array.isArray(week) ? week[selectedIndex] : undefined,
   [selectedIndex, week]);
+
+  const closeModal = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setSelectedIndex(null);
+      setIsClosing(false);
+    }, 300); // Match the animation duration
+  };
 
   // Simple condition → icon mapping
   const getWeatherIcon = (condition?: string) => {
@@ -61,70 +71,81 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
 
   return (
     <Card className="w-full">
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <MapPin className="w-4 h-4 text-primary shrink-0" />
-          <CardTitle className="text-base sm:text-lg font-bold break-words">
-            {location.timezone}
-          </CardTitle>
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 sm:pb-6">
+        <div className="flex items-center gap-2 min-w-0 w-full justify-between sm:justify-start">
+          <div className="flex items-center gap-2 min-w-0">
+            <MapPin className="w-4 h-4 text-primary shrink-0" />
+            <CardTitle className="text-base sm:text-lg font-bold break-words leading-tight">
+              {location.timezone}
+            </CardTitle>
+          </div>
+          {/* Show condition icon next to timezone only on mobile */}
+          <span className="sm:hidden inline-flex items-center shrink-0">
+            {getWeatherIcon(current.condition)}
+          </span>
         </div>
-        <CardDescription className="col-span-2 text-xs sm:text-sm">
+        <CardDescription className="text-xs sm:text-sm w-full sm:w-auto text-left sm:text-right">
           Lat: {location.latitude}, Lon: {location.longitude}
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="order-2 sm:order-1">
+      <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pt-0">
+        <div className="order-2 sm:order-1 w-full sm:w-auto">
           <p className="text-sm text-muted-foreground">Temperature</p>
-          <p className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+          <p className="text-4xl sm:text-4xl font-extrabold tracking-tight">
             {current.temperature}°C
           </p>
           <p className="text-xs text-muted-foreground mt-1">{formattedTime}</p>
         </div>
-        <div className="order-1 sm:order-2 self-end sm:self-auto">
+        <div className="hidden sm:block order-1 sm:order-2 self-end sm:self-auto">
           {getWeatherIcon(current.condition)}
         </div>
       </CardContent>
 
-      <CardFooter className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-6">
-        <div className="flex items-center gap-2">
-          <Sun className="w-4 h-4 text-primary" />
+      <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6 pt-3 sm:pt-6">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Sun className="w-4 h-4 text-primary shrink-0" />
           <span className="text-sm text-muted-foreground">Sunrise:</span>
-          <span className="font-semibold tracking-wide text-primary">{formattedSunrise}</span>
+          <span className="font-semibold tracking-wide text-primary ml-auto sm:ml-0">{formattedSunrise}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Moon className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Moon className="w-4 h-4 text-primary shrink-0" />
           <span className="text-sm text-muted-foreground">Sunset:</span>
-          <span className="font-semibold tracking-wide text-primary">{formattedSunset}</span>
+          <span className="font-semibold tracking-wide text-primary ml-auto sm:ml-0">{formattedSunset}</span>
         </div>
       </CardFooter>
       {Array.isArray(week) && week.length > 0 && (
-        <div className="px-4 sm:px-6 pb-6 space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-fr">
+        <div className="px-3 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 auto-rows-fr">
             {week.map((d, i) => {
               const isSelected = i === selectedIndex;
               return (
                 <button
                   key={d.date}
                   type="button"
-                  onClick={() => setSelectedIndex(i)}
+                  onClick={() => {
+                    setIsClosing(false);
+                    setSelectedIndex(i);
+                  }}
                   aria-pressed={isSelected}
-                  className="group rounded-lg border p-3 grid grid-cols-[1fr_auto] items-center gap-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary data-[selected=true]:bg-accent data-[selected=true]:ring-2 data-[selected=true]:ring-primary min-h-[84px] sm:min-h-[92px]"
+                  className="group rounded-lg border p-2 sm:p-3 grid grid-cols-[1fr_auto] items-center gap-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary data-[selected=true]:bg-accent data-[selected=true]:ring-2 data-[selected=true]:ring-primary min-h-[76px] sm:min-h-[92px]"
                   data-selected={isSelected}
                 >
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       {format(new Date(d.date), "EEE, d MMM")}
                     </p>
-                    <div className="flex items-center gap-2">
-                      {getWeatherIcon(d.condition)}
-                      <p className="text-sm font-medium tabular-nums">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="scale-75 sm:scale-100">
+                        {getWeatherIcon(d.condition)}
+                      </div>
+                      <p className="text-xs sm:text-sm font-medium tabular-nums">
                         {Math.round(d.precipitationProbabilityMax ?? 0)}%
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums">
+                    <p className="text-xs sm:text-sm font-semibold tabular-nums">
                       {Math.round(d.tempMax)}° / {Math.round(d.tempMin)}°
                     </p>
                   </div>
@@ -133,12 +154,13 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
             })}
           </div>
 
+          {/* Desktop: show selected day below cards */}
           {selectedDay && (
-            <div className="rounded-xl border p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="hidden sm:block rounded-xl border p-3 sm:p-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
                 <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Selected day</p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-base sm:text-lg font-semibold">
                     {format(new Date(selectedDay.date), "EEEE, d MMMM")}
                   </p>
                 </div>
@@ -165,12 +187,83 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
                   </span>
                 </div>
               </div>
-              <p className="mt-2 text-sm font-medium flex items-center gap-2 text-primary">
-              {getWeatherIcon(selectedDay.condition)}
+              <p className="mt-2 text-xs sm:text-sm font-medium flex items-center gap-2 text-primary">
+              <div className="scale-75 sm:scale-100">
+                {getWeatherIcon(selectedDay.condition)}
+              </div>
                 Chance of precipitation: {Math.round(selectedDay.precipitationProbabilityMax ?? 0)}%
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Mobile: Modal overlay for selected day */}
+      {selectedDay && (
+        <div 
+          className={`sm:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center p-4 transition-opacity duration-300 ${
+            isClosing ? 'opacity-0' : 'opacity-100'
+          }`}
+          onClick={closeModal}
+        >
+          <div 
+            className={`bg-background rounded-t-xl border w-full max-w-md max-h-[70vh] overflow-y-auto transition-transform duration-300 ease-out ${
+              isClosing 
+                ? 'translate-y-full' 
+                : 'translate-y-0 animate-in slide-in-from-bottom-full duration-300'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-background border-b px-4 py-3 flex items-center justify-between rounded-t-xl">
+              <h3 className="font-semibold text-lg">Weather Details</h3>
+              <button
+                onClick={closeModal}
+                className="p-1 hover:bg-accent rounded-md"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(selectedDay.date), "EEEE, d MMMM")}
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  {getWeatherIcon(selectedDay.condition)}
+                  <div className="text-center">
+                    <p className="text-2xl font-bold tabular-nums">
+                      {Math.round(selectedDay.tempMax)}° / {Math.round(selectedDay.tempMin)}°
+                    </p>
+                    <p className="text-sm text-muted-foreground">High / Low</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="text-center space-y-1">
+                  <Sun className="h-5 w-5 text-primary mx-auto" />
+                  <p className="text-xs text-muted-foreground">Sunrise</p>
+                  <p className="font-medium">
+                    {safelyFormat(selectedDay.sunrise, "hh:mm a")}
+                  </p>
+                </div>
+                <div className="text-center space-y-1">
+                  <Moon className="h-5 w-5 text-primary mx-auto" />
+                  <p className="text-xs text-muted-foreground">Sunset</p>
+                  <p className="font-medium">
+                    {safelyFormat(selectedDay.sunset, "hh:mm a")}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-center pt-2 border-t">
+                <p className="text-sm font-medium text-primary">
+                  Chance of precipitation: {Math.round(selectedDay.precipitationProbabilityMax ?? 0)}%
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </Card>

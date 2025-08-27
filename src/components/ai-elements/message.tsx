@@ -13,7 +13,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
       "group flex w-full items-end justify-end gap-2 py-4",
       from === "user" ? "is-user" : "is-assistant flex-row-reverse justify-end",
       // Allow wider bubbles on larger screens, near-full on mobile
-      "[&>div]:max-w-[96%] sm:[&>div]:max-w-[92%] md:[&>div]:max-w-[90%] xl:[&>div]:max-w-[88%]",
+      "[&>div]:max-w-[98%] sm:[&>div]:max-w-[94%] md:[&>div]:max-w-[90%] xl:[&>div]:max-w-[88%]",
       className,
     )}
     {...props}
