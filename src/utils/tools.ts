@@ -4,6 +4,31 @@ import { google } from "@ai-sdk/google";
 import { put, getDownloadUrl } from "@vercel/blob";
 import { WeatherSchema, WeatherAtLocation } from "@/types/weather";
 
+// Shared weather condition type and mapper for WMO weather codes
+type WeatherCondition =
+  | "clear"
+  | "cloudy"
+  | "fog"
+  | "rain"
+  | "snow"
+  | "thunderstorm"
+  | "unknown";
+
+const codeToCondition = (code?: number): WeatherCondition | undefined => {
+  if (code == null) return undefined;
+  if (code === 0) return "clear";
+  if ([1, 2, 3].includes(code)) return "cloudy";
+  if ([45, 48].includes(code)) return "fog";
+  // Include freezing rain/drizzle codes 66 and 67 in rain bucket
+  if (
+    [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)
+  )
+    return "rain";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+  if ([95, 96, 99].includes(code)) return "thunderstorm";
+  return "unknown";
+};
+
 const BaseInputSchema = z.object({
   latitude: z.number().describe("Latitude in decimal degrees. Example: 52.52"),
   longitude: z
@@ -22,7 +47,9 @@ const BaseInputSchema = z.object({
     .optional(),
 });
 
-const WeatherInputSchema = BaseInputSchema;
+const WeatherInputSchema = BaseInputSchema.extend({
+  locationName: z.string().optional().describe("Optional location name to display (e.g., 'New York City'). If not provided, coordinates will be shown."),
+});
 
 export const imageGenerationTool = tool({
   description: "Generate An Image",
@@ -57,12 +84,12 @@ export const imageGenerationTool = tool({
 
 export const getWeather = tool({
   description:
-    "Weather by coordinates: now (current), a specific date (YYYY-MM-DD), or next week. Use the 'getCoords' tool first to resolve city + ISO country code to coordinates. Uses Open-Meteo Forecast API for past and future via start_date/end_date. Prefer range='next_week' for weekly summaries.",
+    "Weather by coordinates: now (current), a specific date (YYYY-MM-DD), or next week. Optionally provide a location name to display instead of coordinates. Use the 'getCoords' tool first to resolve city + ISO country code to coordinates. Uses Open-Meteo Forecast API for past and future via start_date/end_date. Prefer range='next_week' for weekly summaries.",
   inputSchema: WeatherInputSchema,
   execute: async (
     args: z.infer<typeof WeatherInputSchema>,
   ): Promise<WeatherAtLocation> => {
-    const { latitude, longitude, date, range } = args;
+    const { latitude, longitude, date, range, locationName } = args;
 
     // Weekly forecast branch
     if (range === "next_week") {
@@ -73,17 +100,6 @@ export const getWeather = tool({
         throw new Error(json?.reason || "Open-Meteo error while fetching weekly forecast");
       }
 
-      const codeToCondition = (code?: number): string | undefined => {
-        if (code == null) return undefined;
-        // Simplified mapping of WMO codes
-        if (code === 0) return "clear";
-        if ([1, 2, 3].includes(code)) return "cloudy";
-        if ([45, 48].includes(code)) return "fog";
-        if ([51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82].includes(code)) return "rain";
-        if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
-        if ([95, 96, 99].includes(code)) return "thunderstorm";
-        return "unknown";
-      };
 
       const hourlyTimes: string[] = json.hourly?.time ?? [];
       const hourlyCodes: number[] = json.hourly?.weathercode ?? [];
@@ -117,6 +133,7 @@ export const getWeather = tool({
           latitude: Number(json.latitude),
           longitude: Number(json.longitude),
           timezone: json.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          name: locationName,
         },
         current: {
           time: json.current?.time ?? new Date().toISOString(),
@@ -157,22 +174,12 @@ export const getWeather = tool({
           ? firstIdx
           : -1;
 
-      const codeToCondition = (code?: number): string | undefined => {
-        if (code == null) return undefined;
-        if (code === 0) return "clear";
-        if ([1, 2, 3].includes(code)) return "cloudy";
-        if ([45, 48].includes(code)) return "fog";
-        if ([51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82].includes(code)) return "rain";
-        if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
-        if ([95, 96, 99].includes(code)) return "thunderstorm";
-        return "unknown";
-      };
-
       const cleaned = {
         location: {
           latitude: Number(json.latitude),
           longitude: Number(json.longitude),
           timezone: json.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          name: locationName,
         },
         current: {
           time: hourlyTimes[selectedIdx] ?? `${date}T00:00`,
@@ -198,23 +205,25 @@ export const getWeather = tool({
     }
 
     // Default to current conditions + today's highlights
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode&hourly=temperature_2m,weathercode&daily=sunrise,sunset&timezone=auto`;
 
     const res = await fetch(url);
     const json = await res.json();
     if (json?.error) {
       throw new Error(json?.reason || "Open-Meteo error while fetching current forecast");
-    }
+    }   
 
     const cleaned = {
       location: {
         latitude: Number(json.latitude),
         longitude: Number(json.longitude),
         timezone: json.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        name: locationName,
       },
       current: {
         time: json.current.time,
         temperature: json.current.temperature_2m,
+        condition: codeToCondition(json.current?.weathercode),
       },
       today: {
         sunrise: json.daily.sunrise[0],

@@ -7,11 +7,13 @@ import {
   CloudRain,
   Snowflake,
   Wind,
+  CloudFog,
+  CloudLightning,
   MapPin,
   X,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { WeatherAtLocation } from "@/types/weather";
 import {
   Card,
@@ -21,6 +23,41 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+
+// Hoisted helpers to avoid re-creating on each render
+const normalizeCondition = (raw?: string): string => {
+  if (!raw) return "";
+  const value = raw.toLowerCase();
+  if (/(thunder|lightning|t-?storm|storm)/.test(value)) return "thunderstorm";
+  if (/(rain|drizzle|shower|sprinkle)/.test(value)) return "rain";
+  if (/(snow|sleet|flurries|blizzard)/.test(value)) return "snow";
+  if (/(fog|mist|haze|smoke)/.test(value)) return "fog";
+  if (/(wind|breeze|gust)/.test(value)) return "wind";
+  if (/(cloud|overcast|partly|mostly)/.test(value)) return "cloudy";
+  if (/(clear|sunny|bright)/.test(value)) return "clear";
+  return "unknown";
+};
+
+const WeatherIcon = ({ condition, className, ariaHidden = false, focusable }: { condition?: string; className?: string; ariaHidden?: boolean; focusable?: boolean }) => {
+  const c = normalizeCondition(condition);
+  const base = className ?? "w-7 h-7 sm:w-8 sm:h-8";
+  switch (c) {
+    case "clear":
+      return <Sun className={`text-primary ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Clear"} />;
+    case "cloudy":
+      return <Cloud className={`text-muted-foreground ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Cloudy"} />;
+    case "rain":
+      return <CloudRain className={`text-primary ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Rain"} />;
+    case "snow":
+      return <Snowflake className={`text-primary ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Snow"} />;
+    case "thunderstorm":
+      return <CloudLightning className={`text-primary ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Thunderstorm"} />;
+    case "fog":
+      return <CloudFog className={`text-muted-foreground ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Fog"} />;
+    default:
+      return <Cloud className={`text-muted-foreground ${base}`} aria-hidden={ariaHidden} focusable={focusable} aria-label={ariaHidden ? undefined : "Unknown"} />;
+  }
+};
 
 export function Weather({ location, current, today, week }: WeatherAtLocation) {
   const safelyFormat = (isoString: string | undefined, pattern: string): string => {
@@ -49,43 +86,40 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
     }, 300); // Match the animation duration
   };
 
-  // Simple condition → icon mapping
-  const getWeatherIcon = (condition?: string) => {
-    switch (condition) {
-      case "clear":
-        return <Sun className="text-primary w-7 h-7 sm:w-8 sm:h-8" />;
-      case "cloudy":
-        return <Cloud className="text-muted-foreground w-7 h-7 sm:w-8 sm:h-8" />;
-      case "rain":
-        return <CloudRain className="text-primary w-7 h-7 sm:w-8 sm:h-8" />;
-      case "snow":
-        return <Snowflake className="text-primary w-7 h-7 sm:w-8 sm:h-8" />;
-      case "thunderstorm":
-        return <CloudRain className="text-primary w-7 h-7 sm:w-8 sm:h-8" />;
-      case "fog":
-        return <Wind className="text-muted-foreground w-7 h-7 sm:w-8 sm:h-8" />;
-      default:
-        return <Wind className="text-muted-foreground w-7 h-7 sm:w-8 sm:h-8" />;
-    }
-  };
+  
+
+  // Close mobile modal with Escape for accessibility
+  useEffect(() => {
+    if (!selectedDay) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeModal();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedDay]);
 
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 sm:pb-6">
         <div className="flex items-center gap-2 min-w-0 w-full justify-between sm:justify-start">
-          <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="w-4 h-4 text-primary shrink-0" />
-            <CardTitle className="text-base sm:text-lg font-bold break-words leading-tight">
-              {location.timezone}
-            </CardTitle>
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPin className="w-4 h-4 text-primary shrink-0" />
+              <CardTitle className="text-base sm:text-lg font-bold break-words leading-tight">
+                {location.name || `${location.latitude.toFixed(2)}°, ${location.longitude.toFixed(2)}°`}
+              </CardTitle>
+            </div>
+            <div className="text-xs text-muted-foreground font-medium">
+              {location.name ? `${location.latitude.toFixed(2)}°, ${location.longitude.toFixed(2)}°` : location.timezone}
+            </div>
           </div>
           {/* Show condition icon next to timezone only on mobile */}
           <span className="sm:hidden inline-flex items-center shrink-0">
-            {getWeatherIcon(current.condition)}
+            <WeatherIcon condition={current.condition} ariaHidden={true} focusable={false} />
           </span>
         </div>
         <CardDescription className="text-xs sm:text-sm w-full sm:w-auto text-left sm:text-right">
-          Lat: {location.latitude}, Lon: {location.longitude}
+          {location.name ? "Location Details" : "Coordinates"}
         </CardDescription>
       </CardHeader>
 
@@ -98,7 +132,7 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
           <p className="text-xs text-muted-foreground mt-1">{formattedTime}</p>
         </div>
         <div className="hidden sm:block order-1 sm:order-2 self-end sm:self-auto">
-          {getWeatherIcon(current.condition)}
+          <WeatherIcon condition={current.condition} ariaHidden={true} focusable={false} />
         </div>
       </CardContent>
 
@@ -128,6 +162,7 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
                     setSelectedIndex(i);
                   }}
                   aria-pressed={isSelected}
+                  aria-label={`Forecast for ${safelyFormat(d.date, "EEEE, d MMMM")}, high ${Math.round(d.tempMax)}°, low ${Math.round(d.tempMin)}°`}
                   className="group rounded-lg border p-2 sm:p-3 grid grid-cols-[1fr_auto] items-center gap-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary data-[selected=true]:bg-accent data-[selected=true]:ring-2 data-[selected=true]:ring-primary min-h-[76px] sm:min-h-[92px]"
                   data-selected={isSelected}
                 >
@@ -137,7 +172,7 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
                     </p>
                     <div className="flex items-center gap-1 sm:gap-2">
                       <div className="scale-75 sm:scale-100">
-                        {getWeatherIcon(d.condition)}
+                        <WeatherIcon condition={d.condition} />
                       </div>
                       <p className="text-xs sm:text-sm font-medium tabular-nums">
                         {Math.round(d.precipitationProbabilityMax ?? 0)}%
@@ -187,12 +222,14 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
                   </span>
                 </div>
               </div>
-              <p className="mt-2 text-xs sm:text-sm font-medium flex items-center gap-2 text-primary">
-              <div className="scale-75 sm:scale-100">
-                {getWeatherIcon(selectedDay.condition)}
+              <div className="mt-2 text-xs sm:text-sm font-medium flex items-center gap-2 text-primary">
+                <div className="scale-75 sm:scale-100">
+                  <WeatherIcon condition={selectedDay.condition} />
+                </div>
+                <span>
+                  Chance of precipitation: {Math.round(selectedDay.precipitationProbabilityMax ?? 0)}%
+                </span>
               </div>
-                Chance of precipitation: {Math.round(selectedDay.precipitationProbabilityMax ?? 0)}%
-              </p>
             </div>
           )}
         </div>
@@ -230,7 +267,7 @@ export function Weather({ location, current, today, week }: WeatherAtLocation) {
                   {format(new Date(selectedDay.date), "EEEE, d MMMM")}
                 </p>
                 <div className="flex items-center justify-center gap-3">
-                  {getWeatherIcon(selectedDay.condition)}
+                  <WeatherIcon condition={selectedDay.condition} />
                   <div className="text-center">
                     <p className="text-2xl font-bold tabular-nums">
                       {Math.round(selectedDay.tempMax)}° / {Math.round(selectedDay.tempMin)}°

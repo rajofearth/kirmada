@@ -17,6 +17,7 @@ export const WeatherSchema = z.object({
     latitude: z.number(),
     longitude: z.number(),
     timezone: z.string(),
+    name: z.string().optional(),
   }),
   current: z.object({
     time: z.string(),
