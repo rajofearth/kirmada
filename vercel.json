@@ -3,5 +3,5 @@
   "buildCommand": "bun db:generate && turbo build",
   "installCommand": "bun install",
   "framework": null,
-  "outputDirectory": null
+  "outputDirectory": "apps/web/.next"
 }
