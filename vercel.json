@@ -3,10 +3,5 @@
   "buildCommand": "bun db:generate && turbo build",
   "installCommand": "bun install",
   "framework": null,
-  "outputDirectory": "apps/web/.next",
-  "functions": {
-    "apps/web/.next/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  "outputDirectory": "apps/web/.next"
 }
