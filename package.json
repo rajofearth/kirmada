@@ -19,7 +19,11 @@
 		"db:migrate": "turbo -F server db:migrate"
 	},
 	"dependencies": {
-		"@ai-sdk/openai": "^2.0.23"
+		"@ai-sdk/openai": "^2.0.23",
+		"@radix-ui/react-avatar": "^1.1.10",
+		"@radix-ui/react-use-controllable-state": "^1.2.2",
+		"react-syntax-highlighter": "^15.6.6",
+		"use-stick-to-bottom": "^1.1.1"
 	},
 	"devDependencies": {
 		"turbo": "^2.5.4"
