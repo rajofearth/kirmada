@@ -1,84 +1,401 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Response } from "@/components/response";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import { Message, MessageContent } from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputButton,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputToolbar,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
+import { Response } from "@/components/ai-elements/response";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from "@/components/ai-elements/source";
+import { WeatherSchema } from "@/types/weather";
+import { Weather } from "@/components/generativeui/weather";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardFooter } from "@/components/ui/card";
+import { useChat } from "@ai-sdk/react";
+import { DownloadIcon, Loader, MicIcon, PlusIcon } from "lucide-react";
+import Image from "next/image";
+import { useRef, useState } from "react";
+import { DefaultChatTransport } from "ai";
+ 
 
 export default function AIPage() {
-	const [input, setInput] = useState("");
-	const { messages, sendMessage } = useChat({
+	const { messages, sendMessage, status } = useChat({
 		transport: new DefaultChatTransport({
-			api: `${process.env.NEXT_PUBLIC_SERVER_URL}/ai`,
+			api: `${process.env.NEXT_PUBLIC_SERVER_URL}/api/chat`,
 		}),
 	});
+	const [input, setInput] = useState("");
+	const [files, setFiles] = useState<FileList | undefined>(undefined);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [recording, setRecording] = useState(false);
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+	const audioChunksRef = useRef<Blob[]>([]);
 
-	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const handleMicClick = async () => {
+		if (!recording) {
+		  // Start recording
+		  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		  mediaRecorderRef.current = new MediaRecorder(stream);
+		  audioChunksRef.current = [];
+	
+		  mediaRecorderRef.current.ondataavailable = (event) => {
+			if (event.data.size > 0) {
+			  audioChunksRef.current.push(event.data);
+			}
+		  };
+	
+		  mediaRecorderRef.current.onstop = async () => {
+			const audioBlob = new Blob(audioChunksRef.current, {
+			  type: "audio/webm",
+			});
+			const formData = new FormData();
+			formData.append("file", audioBlob, "audio.webm");
 
-	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages]);
+			const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/transcribe`, {
+			  method: "POST",
+			  body: formData,
+			});
+			const { text } = await res.json();
+			setInput((prev) => prev + " " + text);
+		  };
+	
+		  mediaRecorderRef.current.start();
+		  setRecording(true);
+		} else {
+		  // Stop recording
+		  mediaRecorderRef.current?.stop();
+	
+		  // 🔴 Important: stop mic tracks so the mic turns off
+		  mediaRecorderRef.current?.stream
+			.getTracks()
+			.forEach((track) => track.stop());
+	
+		  setRecording(false);
+		}
+	  };
 
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		const text = input.trim();
-		if (!text) return;
-		sendMessage({ text });
-		setInput("");
-	};
+		if (input.trim()) {
+		  sendMessage({ text: input, files: files });
+		  setInput("");
+		}
+	  };
 
-	return (
-		<div className="grid grid-rows-[1fr_auto] overflow-hidden w-full mx-auto p-4">
-			<div className="overflow-y-auto space-y-4 pb-4">
-				{messages.length === 0 ? (
-					<div className="text-center text-muted-foreground mt-8">
-						Ask me anything to get started!
-					</div>
-				) : (
-					messages.map((message) => (
-						<div
-							key={message.id}
-							className={`p-3 rounded-lg ${
-								message.role === "user"
-									? "bg-primary/10 ml-8"
-									: "bg-secondary/20 mr-8"
-							}`}
-						>
-							<p className="text-sm font-semibold mb-1">
-								{message.role === "user" ? "You" : "AI Assistant"}
-							</p>
-							{message.parts?.map((part, index) => {
-								if (part.type === "text") {
-									return <Response key={index}>{part.text}</Response>;
+	  return (
+		<div className="max-w-5xl xl:max-w-6xl mx-auto p-2 sm:p-6 relative size-full h-screen dark">
+		  <div className="flex flex-col h-full">
+			<Conversation className="h-full">
+			  <ConversationContent>
+				{messages.map((message) => (
+				  <div key={message.id}>
+					<Message from={message.role} key={message.id}>
+					  <MessageContent>
+						{message.parts.map((part, i) => {
+						  switch (part.type) {
+							case "text":
+							  return (
+								<Response key={`${message.id}-${i}`}>
+								  {part.text}
+								</Response>
+							  );
+							case "reasoning":
+							  return (
+								<Reasoning
+								  key={`${message.id}-${i}`}
+								  className="w-full"
+								  isStreaming={i === message.parts.length - 1 && status === "streaming"}
+								>
+								  <ReasoningTrigger />
+								  <ReasoningContent>{part.text}</ReasoningContent>
+								</Reasoning>
+							  );
+							case "tool-imageGen":
+							  const { state, toolCallId } = part;
+							  if (state === "input-available") {
+								return (
+								  <Tool key={`${message.id}-part-${toolCallId}`}>
+									<ToolHeader type={part.type} state={part.state} />
+									<ToolContent>
+									  <ToolInput input={(part as any).input} />
+									  <div className="p-4">Generating Image...</div>
+									</ToolContent>
+								  </Tool>
+								);
+							  }
+							  if (state === "output-available") {
+								const { input, output } = part as {
+								  input: { prompt: string };
+								  output: {
+									imageUrl?: string;
+									downloadUrl?: string;
+								  };
+								};
+								if (output.imageUrl) {
+								  return (
+									<div key={`${message.id}-img-${toolCallId}`}>
+									  <Tool key={`${toolCallId}-meta`}>
+										<ToolHeader type={part.type} state={part.state} />
+										<ToolContent>
+										  <ToolInput input={(part as any).input} />
+										</ToolContent>
+									  </Tool>
+									  <div className="p-4">
+										<Card className="border-none p-0 group">
+										  <div className="relative w-full">
+											<Image
+											  key={toolCallId}
+											  src={output.imageUrl}
+											  alt={input.prompt}
+											  height={400}
+											  width={400}
+											  className="object-cover rounded-lg mx-auto"
+											/>
+											<CardFooter
+											  className="absolute bottom-0 left-0 right-0 flex justify-between items-start gap-2 bg-black/60 backdrop-blur-sm px-2 py-1.5 rounded-b-lg transition-all duration-500 ease-in-out overflow-hidden group-hover:overflow-visible"
+											>
+											  <p className="text-[12px] leading-snug text-white max-h-[2.8em] overflow-hidden transition-[max-height] duration-500 ease-in-out hover:max-h-[200px]">
+												{input.prompt}
+											  </p>
+											  <Button variant="ghost" size="icon" asChild>
+												<a href={output.downloadUrl}>
+												  <DownloadIcon className="h-4 w-4" />
+												</a>
+											  </Button>
+											</CardFooter>
+										  </div>
+										</Card>
+									  </div>
+									</div>
+								  );
 								}
 								return null;
-							})}
-						</div>
-					))
-				)}
-				<div ref={messagesEndRef} />
-			</div>
-
-			<form
-				onSubmit={handleSubmit}
-				className="w-full flex items-center space-x-2 pt-2 border-t"
-			>
-				<Input
-					name="prompt"
-					value={input}
-					onChange={(e) => setInput(e.target.value)}
-					placeholder="Type your message..."
-					className="flex-1"
-					autoComplete="off"
-					autoFocus
+							  }
+							case "tool-displayWeather": {
+							  switch (part.state) {
+								case "input-available":
+								  return (
+									<Tool key={`${message.id}-tw-${i}`}>
+									  <ToolHeader type={part.type} state={part.state} />
+									  <ToolContent>
+										<ToolInput input={(part as any).input} />
+									  </ToolContent>
+									</Tool>
+								  );
+								case "output-available": {
+								  // part.output is unknown -> let zod validate it (throws on invalid)
+								  try {
+									const validatedWeather = WeatherSchema.parse(
+									  (part as any).output,
+									);
+									return (
+									  <div key={`${message.id}-tw-out-${i}`}>
+										<Tool key={`${message.id}-tw-${i}-meta`}>
+										  <ToolHeader type={part.type} state={part.state} />
+										  <ToolContent>
+											<ToolInput input={(part as any).input} />
+										  </ToolContent>
+										</Tool>
+										<div className="p-0">
+										  <Weather {...validatedWeather} />
+										</div>
+									  </div>
+									);
+								  } catch (err) {
+									// show useful error rather than crash
+									return (
+									  <Tool key={`${message.id}-tw-${i}`}>
+										<ToolHeader type={part.type} state={"output-error"} />
+										<ToolContent>
+										  <ToolOutput output={undefined} errorText="Invalid weather data received." />
+										</ToolContent>
+									  </Tool>
+									);
+								  }
+								}
+								case "output-error":
+								  return (
+									<Tool key={`${message.id}-tw-${i}`}>
+									  <ToolHeader type={part.type} state={part.state} />
+									  <ToolContent>
+										<ToolOutput output={undefined} errorText={(part as any).errorText} />
+									  </ToolContent>
+									</Tool>
+								  );
+								default:
+								  return null;
+							  }
+							}
+							case "tool-getCoords": {
+							  switch (part.state) {
+								case "input-available":
+								  return (
+									<Tool key={`${message.id}-tg-${i}`}>
+									  <ToolHeader type={part.type} state={part.state} />
+									  <ToolContent>
+										<ToolInput input={(part as any).input} />
+									  </ToolContent>
+									</Tool>
+								  );
+								case "output-available": {
+								  const { input, output } = part as any;
+								  const results = output?.results ?? [];
+								  const list = (
+									<div className="p-4">
+									  <div className="text-xs text-muted-foreground mb-2">{output?.url}</div>
+									  <table className="w-full text-sm">
+										<thead>
+										  <tr className="text-left">
+											<th className="py-1">Name</th>
+											<th className="py-1">Admin1</th>
+											<th className="py-1">Country</th>
+											<th className="py-1">Lat</th>
+											<th className="py-1">Lon</th>
+										  </tr>
+										</thead>
+										<tbody>
+										  {results.map((r: any) => (
+											<tr key={r.id} className="border-t">
+											  <td className="py-1">{r.name}</td>
+											  <td className="py-1">{r.admin1}</td>
+											  <td className="py-1">{r.country}</td>
+											  <td className="py-1 tabular-nums">{r.latitude}</td>
+											  <td className="py-1 tabular-nums">{r.longitude}</td>
+											</tr>
+										  ))}
+										</tbody>
+									  </table>
+									</div>
+								  );
+								  return (
+									<Tool key={`${message.id}-tg-${i}`}>
+									  <ToolHeader type={part.type} state={part.state} />
+									  <ToolContent>
+										<ToolInput input={input} />
+										<ToolOutput output={list} errorText={undefined} />
+									  </ToolContent>
+									</Tool>
+								  );
+								}
+								case "output-error":
+								  return (
+									<Tool key={`${message.id}-tg-${i}`}>
+									  <ToolHeader type={part.type} state={part.state} />
+									  <ToolContent>
+										<ToolOutput output={undefined} errorText={(part as any).errorText} />
+									  </ToolContent>
+									</Tool>
+								  );
+								default:
+								  return null;
+							  }
+							}
+							default:
+							  return null;
+						  }
+						})}
+					  </MessageContent>
+					</Message>
+					{message.role === "assistant" &&
+					  message.parts.some((m) => m.type === "source-url") && (
+						<Sources>
+						  <SourcesTrigger
+							count={
+							  message.parts.filter(
+								(part) => part.type === "source-url",
+							  ).length
+							}
+						  />
+						  {message.parts.map((part, i) => {
+							switch (part.type) {
+							  case "source-url":
+								return (
+								  <SourcesContent key={`${message.id}-${i}`}>
+									<Source
+									  key={`${message.id}-${i}`}
+									  href={part.url}
+									  title={part.url}
+									/>
+								  </SourcesContent>
+								);
+							}
+						  })}
+						</Sources>
+					  )}
+				  </div>
+				))}
+				{status === "submitted" && <Loader />}
+			  </ConversationContent>
+			  <ConversationScrollButton />
+			</Conversation>
+	
+			<PromptInput onSubmit={handleSubmit} className="mt-2 sm:mt-4">
+			  <PromptInputTextarea
+				onChange={(e) => setInput(e.target.value)}
+				value={input}
+				canSubmit={Boolean(input.trim()) && status !== "submitted" && status !== "streaming"}
+			  />
+			  <PromptInputToolbar>
+				<PromptInputTools>
+				  <PromptInputButton
+					onClick={() => fileInputRef.current?.click()}
+					aria-label="Attach Files"
+				  >
+					<PlusIcon />
+				  </PromptInputButton>
+				  <input
+					type="file"
+					onChange={(event) => {
+					  if (event.target.files) {
+						setFiles(event.target.files);
+					  }
+					}}
+					multiple
+					accept="application/pdf,image/*"
+					ref={fileInputRef}
+					className="hidden"
+				  />
+				  <PromptInputButton
+					onClick={handleMicClick}
+					aria-label="Capture Audio"
+					className={recording ? "bg-red-500" : ""}
+				  >
+					<MicIcon />
+				  </PromptInputButton>
+				</PromptInputTools>
+				<PromptInputSubmit
+				  disabled={!input.trim() || status === "submitted" || status === "streaming"}
+				  status={status}
 				/>
-				<Button type="submit" size="icon">
-					<Send size={18} />
-				</Button>
-			</form>
+			  </PromptInputToolbar>
+			</PromptInput>
+		  </div>
 		</div>
-	);
-}
+	  );
+	}

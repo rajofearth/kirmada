@@ -6,14 +6,17 @@ export const auth = betterAuth({
 	database: prismaAdapter(prisma, {
 		provider: "postgresql",
 	}),
-	trustedOrigins: [process.env.CORS_ORIGIN || ""],
+	trustedOrigins: [
+		process.env.CORS_ORIGIN || "http://localhost:3001",
+		"http://localhost:3001"
+	],
 	emailAndPassword: {
 		enabled: true,
 	},
 	advanced: {
 		defaultCookieAttributes: {
-			sameSite: "none",
-			secure: true,
+			sameSite: "lax",
+			secure: process.env.NODE_ENV === "production",
 			httpOnly: true,
 		},
 	},

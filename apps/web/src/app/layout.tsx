@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "kirmadai-new",
-	description: "kirmadai-new",
-};
+	title: "Kirmadai",
+	description: "An AI Webapp By Yashraj Maher",
+  };
 
 export default function RootLayout({
 	children,
