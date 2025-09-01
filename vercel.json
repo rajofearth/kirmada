@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "turbo build",
+  "buildCommand": "turbo build:generate",
   "installCommand": "bun install",
   "framework": null,
   "outputDirectory": null
