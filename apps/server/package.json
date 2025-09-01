@@ -14,7 +14,7 @@
 	"dependencies": {
 		"@ai-sdk/google": "^2.0.3",
 		"@ai-sdk/groq": "^2.0.3",
-		"@prisma/client": "^6.13.0",
+ 		"@prisma/client": "^6.13.0",
 		"@prisma/extension-accelerate": "^2.0.2",
 		"@trpc/client": "^11.5.0",
 		"@trpc/server": "^11.5.0",
