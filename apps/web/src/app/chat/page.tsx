@@ -359,7 +359,6 @@ export default function AIPage() {
 			  <PromptInputTextarea
 				onChange={(e) => setInput(e.target.value)}
 				value={input}
-				canSubmit={Boolean(input.trim()) && status !== "submitted" && status !== "streaming"}
 			  />
 			  <PromptInputToolbar>
 				<PromptInputTools>
