@@ -26,7 +26,8 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "@kirmadai/shared": ["../../packages/shared/src"]
     }
   },
   "include": [
