@@ -1,5 +1,5 @@
 {
-	"name": "kirmadai",
+"name": "kirmadai",
 	"private": true,
 	"workspaces": [
 		"apps/*",
